@@ -256,8 +256,6 @@ kube_router_image_repo: "{{ docker_image_repo }}/cloudnativelabs/kube-router"
 kube_router_image_tag: "v{{ kube_router_version }}"
 multus_image_repo: "{{ github_image_repo }}/k8snetworkplumbingwg/multus-cni"
 multus_image_tag: "v{{ multus_version }}"
-external_openstack_cloud_controller_image_repo: "{{ kube_image_repo }}/provider-os/openstack-cloud-controller-manager"
-external_openstack_cloud_controller_image_tag: "v1.35.0"
 
 kube_vip_version: 1.0.3
 kube_vip_image_repo: "{{ github_image_repo }}/kube-vip/kube-vip{{ '-iptables' if kube_vip_lb_fwdmethod == 'masquerade' else '' }}"
@@ -313,55 +311,12 @@ cert_manager_cainjector_image_tag: "v{{ cert_manager_version }}"
 cert_manager_webhook_image_repo: "{{ quay_image_repo }}/jetstack/cert-manager-webhook"
 cert_manager_webhook_image_tag: "v{{ cert_manager_version }}"
 
-csi_attacher_image_repo: "{{ kube_image_repo }}/sig-storage/csi-attacher"
-csi_attacher_image_tag: "v4.4.2"
-csi_provisioner_image_repo: "{{ kube_image_repo }}/sig-storage/csi-provisioner"
-csi_provisioner_image_tag: "v3.6.2"
-csi_snapshotter_image_repo: "{{ kube_image_repo }}/sig-storage/csi-snapshotter"
-csi_snapshotter_image_tag: "v6.3.2"
-csi_resizer_image_repo: "{{ kube_image_repo }}/sig-storage/csi-resizer"
-csi_resizer_image_tag: "v1.9.2"
-csi_node_driver_registrar_image_repo: "{{ kube_image_repo }}/sig-storage/csi-node-driver-registrar"
-csi_node_driver_registrar_image_tag: "v2.4.0"
-csi_livenessprobe_image_repo: "{{ kube_image_repo }}/sig-storage/livenessprobe"
-csi_livenessprobe_image_tag: "v2.11.0"
-
 snapshot_controller_supported_versions:
   '1.35': "v7.0.2"
   '1.34': "v7.0.2"
   '1.33': "v7.0.2"
 snapshot_controller_image_repo: "{{ kube_image_repo }}/sig-storage/snapshot-controller"
 snapshot_controller_image_tag: "{{ snapshot_controller_supported_versions[kube_major_version] }}"
-
-cinder_csi_plugin_version: "1.30.0"
-cinder_csi_plugin_image_repo: "{{ kube_image_repo }}/provider-os/cinder-csi-plugin"
-cinder_csi_plugin_image_tag: "v{{ cinder_csi_plugin_version }}"
-
-aws_ebs_csi_plugin_version: "0.5.0"
-aws_ebs_csi_plugin_image_repo: "{{ docker_image_repo }}/amazon/aws-ebs-csi-driver"
-aws_ebs_csi_plugin_image_tag: "v{{ aws_ebs_csi_plugin_version }}"
-
-gcp_pd_csi_plugin_version: "1.9.2"
-gcp_pd_csi_plugin_image_repo: "{{ kube_image_repo }}/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver"
-gcp_pd_csi_plugin_image_tag: "v{{ gcp_pd_csi_plugin_version }}"
-
-azure_csi_image_repo: "mcr.microsoft.com/oss/kubernetes-csi"
-azure_csi_provisioner_image_tag: "v2.2.2"
-azure_csi_attacher_image_tag: "v3.3.0"
-azure_csi_resizer_image_tag: "v1.3.0"
-azure_csi_livenessprobe_image_tag: "v2.5.0"
-azure_csi_node_registrar_image_tag: "v2.4.0"
-azure_csi_snapshotter_image_tag: "v3.0.3"
-azure_csi_plugin_version: "1.10.0"
-azure_csi_plugin_image_repo: "mcr.microsoft.com/k8s/csi"
-azure_csi_plugin_image_tag: "v{{ azure_csi_plugin_version }}"
-
-gcp_pd_csi_image_repo: "gke.gcr.io"
-gcp_pd_csi_driver_image_tag: "v0.7.0-gke.0"
-gcp_pd_csi_provisioner_image_tag: "v1.5.0-gke.0"
-gcp_pd_csi_attacher_image_tag: "v2.1.1-gke.0"
-gcp_pd_csi_resizer_image_tag: "v0.4.0-gke.0"
-gcp_pd_csi_registrar_image_tag: "v1.2.0-gke.0"
 
 metallb_speaker_image_repo: "{{ quay_image_repo }}/metallb/speaker"
 metallb_controller_image_repo: "{{ quay_image_repo }}/metallb/controller"
@@ -943,84 +898,12 @@ downloads:
     groups:
       - kube_control_plane
 
-  csi_attacher:
-    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
-    container: true
-    repo: "{{ csi_attacher_image_repo }}"
-    tag: "{{ csi_attacher_image_tag }}"
-    checksum: "{{ csi_attacher_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
-  csi_provisioner:
-    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
-    container: true
-    repo: "{{ csi_provisioner_image_repo }}"
-    tag: "{{ csi_provisioner_image_tag }}"
-    checksum: "{{ csi_provisioner_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
-  csi_snapshotter:
-    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
-    container: true
-    repo: "{{ csi_snapshotter_image_repo }}"
-    tag: "{{ csi_snapshotter_image_tag }}"
-    checksum: "{{ csi_snapshotter_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
   snapshot_controller:
     enabled: "{{ csi_snapshot_controller_enabled }}"
     container: true
     repo: "{{ snapshot_controller_image_repo }}"
     tag: "{{ snapshot_controller_image_tag }}"
     checksum: "{{ snapshot_controller_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
-  csi_resizer:
-    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
-    container: true
-    repo: "{{ csi_resizer_image_repo }}"
-    tag: "{{ csi_resizer_image_tag }}"
-    checksum: "{{ csi_resizer_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
-  csi_livenessprobe:
-    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
-    container: true
-    repo: "{{ csi_livenessprobe_image_repo }}"
-    tag: "{{ csi_livenessprobe_image_tag }}"
-    checksum: "{{ csi_livenessprobe_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
-  csi_node_driver_registrar:
-    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
-    container: true
-    repo: "{{ csi_node_driver_registrar_image_repo }}"
-    tag: "{{ csi_node_driver_registrar_image_tag }}"
-    checksum: "{{ csi_node_driver_registrar_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
-  cinder_csi_plugin:
-    enabled: "{{ cinder_csi_enabled }}"
-    container: true
-    repo: "{{ cinder_csi_plugin_image_repo }}"
-    tag: "{{ cinder_csi_plugin_image_tag }}"
-    checksum: "{{ cinder_csi_plugin_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
-  aws_ebs_csi_plugin:
-    enabled: "{{ aws_ebs_csi_enabled }}"
-    container: true
-    repo: "{{ aws_ebs_csi_plugin_image_repo }}"
-    tag: "{{ aws_ebs_csi_plugin_image_tag }}"
-    checksum: "{{ aws_ebs_csi_plugin_digest_checksum | default(None) }}"
     groups:
       - kube_node
 

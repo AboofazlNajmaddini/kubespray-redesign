@@ -16,11 +16,6 @@
   tags:
     - cilium
     - calico
-    - flannel
-    - macvlan
-    - kube-ovn
-    - kube-router
-    - custom_cni
 
 - name: Cilium additional
   include_role:
@@ -34,14 +29,4 @@
     - cilium_deploy_additionally
   tags:
     - cilium
-
-- name: Multus
-  include_role:
-    name: network_plugin/multus
-    apply:
-      tags:
-        - multus
-        - network
-  when: kube_network_plugin_multus
-  tags:
-    - multus
+    - network

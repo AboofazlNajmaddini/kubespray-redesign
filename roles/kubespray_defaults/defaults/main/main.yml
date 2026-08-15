@@ -48,9 +48,7 @@ kube_reserved_cgroups_for_service_slice: kube.slice
 ## 'addon/kube-proxy' gets skipped for some network plugins
 kubeadm_init_phases_skip_default: [ "addon/coredns" ]
 kubeadm_init_phases_skip: >-
-  {%- if kube_network_plugin == 'kube-router' and (kube_router_run_service_proxy is defined and kube_router_run_service_proxy) -%}
-  {{ kubeadm_init_phases_skip_default + ["addon/kube-proxy"] }}
-  {%- elif kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and (cilium_kube_proxy_replacement == 'strict' or (cilium_kube_proxy_replacement | bool) or (cilium_kube_proxy_replacement | string | lower == 'true') )) -%}
+  {%- if kube_network_plugin == 'cilium' and (cilium_kube_proxy_replacement is defined and (cilium_kube_proxy_replacement == 'strict' or (cilium_kube_proxy_replacement | bool) or (cilium_kube_proxy_replacement | string | lower == 'true') )) -%}
   {{ kubeadm_init_phases_skip_default + ["addon/kube-proxy"] }}
   {%- elif kube_network_plugin == 'calico' and (calico_bpf_enabled is defined and calico_bpf_enabled) -%}
   {{ kubeadm_init_phases_skip_default + ["addon/kube-proxy"] }}
@@ -207,10 +205,8 @@ kube_external_ca_mode: false
 # Cluster Loglevel configuration
 kube_log_level: 2
 
-# Choose network plugin (cilium, calico, kube-ovn or flannel. Use cni for generic cni plugin)
-# Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
-kube_network_plugin: calico
-kube_network_plugin_multus: false
+# Choose network plugin (calico or cilium)
+kube_network_plugin: cilium
 
 ## Network plugin options with dependencies across the whole playbook
 

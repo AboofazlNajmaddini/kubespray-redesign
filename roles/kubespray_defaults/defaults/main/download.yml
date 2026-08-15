@@ -98,7 +98,7 @@ docker_image_repo: "docker.io"
 # quay image repo define
 quay_image_repo: "quay.io"
 
-# github image repo define (ex multus only use that)
+# github image repo define
 github_image_repo: "ghcr.io"
 
 # TODO(mattymo): Move calico versions to roles/network_plugins/calico/defaults
@@ -112,18 +112,12 @@ calico_apiserver_version: "{{ calico_version }}"
 typha_enabled: false
 calico_apiserver_enabled: false
 
-flannel_version: 0.28.4
-flannel_cni_version: 1.7.1-flannel1
 cni_version: "{{ (cni_binary_checksums['amd64'] | dict2items)[0].key }}"
 
 cilium_version: "1.19.3"
 cilium_cli_version: "{{ (ciliumcli_binary_checksums['amd64'] | dict2items)[0].key }}"
 cilium_enable_hubble: false
 
-kube_ovn_version: "1.12.21"
-kube_ovn_dpdk_version: "19.11-v{{ kube_ovn_version }}"
-kube_router_version: "2.1.1"
-multus_version: "4.2.2"
 helm_version: "{{ (helm_archive_checksums['amd64'] | dict2items)[0].key }}"
 nerdctl_version: "{{ (nerdctl_archive_checksums['amd64'] | dict2items)[0].key }}"
 skopeo_version: "{{ (skopeo_binary_checksums['amd64'] | dict2items)[0].key }}"
@@ -216,10 +210,6 @@ skopeo_binary_checksum: "{{ skopeo_binary_checksums[image_arch][skopeo_version] 
 kube_proxy_image_repo: "{{ kube_image_repo }}/kube-proxy"
 etcd_image_repo: "{{ quay_image_repo }}/coreos/etcd"
 etcd_image_tag: "v{{ etcd_version }}"
-flannel_image_repo: "{{ docker_image_repo }}/flannel/flannel"
-flannel_image_tag: "v{{ flannel_version }}"
-flannel_init_image_repo: "{{ docker_image_repo }}/flannel/flannel-cni-plugin"
-flannel_init_image_tag: "v{{ flannel_cni_version }}"
 calico_node_image_repo: "{{ quay_image_repo }}/calico/node"
 calico_node_image_tag: "v{{ calico_version }}"
 calico_cni_image_repo: "{{ quay_image_repo }}/calico/cni"
@@ -246,16 +236,6 @@ cilium_hubble_ui_backend_image_repo: "{{ quay_image_repo }}/cilium/hubble-ui-bac
 cilium_hubble_ui_backend_image_tag: "v0.13.3"
 cilium_hubble_envoy_image_repo: "{{ quay_image_repo }}/cilium/cilium-envoy"
 cilium_hubble_envoy_image_tag: "v1.34.10-1762597008-ff7ae7d623be00078865cff1b0672cc5d9bfc6d5"
-kube_ovn_container_image_repo: "{{ docker_image_repo }}/kubeovn/kube-ovn"
-kube_ovn_container_image_tag: "v{{ kube_ovn_version }}"
-kube_ovn_vpc_container_image_repo: "{{ docker_image_repo }}/kubeovn/vpc-nat-gateway"
-kube_ovn_vpc_container_image_tag: "v{{ kube_ovn_version }}"
-kube_ovn_dpdk_container_image_repo: "{{ docker_image_repo }}/kubeovn/kube-ovn-dpdk"
-kube_ovn_dpdk_container_image_tag: "{{ kube_ovn_dpdk_version }}"
-kube_router_image_repo: "{{ docker_image_repo }}/cloudnativelabs/kube-router"
-kube_router_image_tag: "v{{ kube_router_version }}"
-multus_image_repo: "{{ github_image_repo }}/k8snetworkplumbingwg/multus-cni"
-multus_image_tag: "v{{ multus_version }}"
 
 kube_vip_version: 1.0.3
 kube_vip_image_repo: "{{ github_image_repo }}/kube-vip/kube-vip{{ '-iptables' if kube_vip_lb_fwdmethod == 'masquerade' else '' }}"
@@ -614,33 +594,6 @@ downloads:
     groups:
       - k8s_cluster
 
-  multus:
-    enabled: "{{ kube_network_plugin_multus }}"
-    container: true
-    repo: "{{ multus_image_repo }}"
-    tag: "{{ multus_image_tag }}"
-    checksum: "{{ multus_digest_checksum | default(None) }}"
-    groups:
-      - k8s_cluster
-
-  flannel:
-    enabled: "{{ kube_network_plugin == 'flannel' }}"
-    container: true
-    repo: "{{ flannel_image_repo }}"
-    tag: "{{ flannel_image_tag }}"
-    checksum: "{{ flannel_digest_checksum | default(None) }}"
-    groups:
-      - k8s_cluster
-
-  flannel_init:
-    enabled: "{{ kube_network_plugin == 'flannel' }}"
-    container: true
-    repo: "{{ flannel_init_image_repo }}"
-    tag: "{{ flannel_init_image_tag }}"
-    checksum: "{{ flannel_init_digest_checksum | default(None) }}"
-    groups:
-      - k8s_cluster
-
   calicoctl:
     enabled: "{{ kube_network_plugin == 'calico' }}"
     file: true
@@ -708,24 +661,6 @@ downloads:
     mode: "0755"
     groups:
       - kube_control_plane
-
-  kube_ovn:
-    enabled: "{{ kube_network_plugin == 'kube-ovn' }}"
-    container: true
-    repo: "{{ kube_ovn_container_image_repo }}"
-    tag: "{{ kube_ovn_container_image_tag }}"
-    checksum: "{{ kube_ovn_digest_checksum | default(None) }}"
-    groups:
-      - k8s_cluster
-
-  kube_router:
-    enabled: "{{ kube_network_plugin == 'kube-router' }}"
-    container: true
-    repo: "{{ kube_router_image_repo }}"
-    tag: "{{ kube_router_image_tag }}"
-    checksum: "{{ kube_router_digest_checksum | default(None) }}"
-    groups:
-      - k8s_cluster
 
   pod_infra:
     enabled: true

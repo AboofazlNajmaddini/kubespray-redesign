@@ -3,8 +3,7 @@
 bin_dir: /usr/local/bin
 
 ## The access_ip variable is used to define how other nodes should access
-## the node.  This is used in flannel to allow other flannel nodes to see
-## this node for example.  The access_ip is really useful AWS and Google
+## the node.  The access_ip is really useful AWS and Google
 ## environments where the nodes are accessed remotely by the "public" ip,
 ## but don't know about that address themselves.
 # access_ip: 1.1.1.1

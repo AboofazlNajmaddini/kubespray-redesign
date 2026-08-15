@@ -333,9 +333,6 @@
     - "{{ etcd_events_data_dir }}"
     - "{{ etcd_config_dir }}"
     - /var/log/calico
-    - /var/log/openvswitch
-    - /var/log/ovn
-    - /var/log/kube-ovn
     - /var/log/containers
     - /etc/cni
     - /etc/nerdctl
@@ -349,8 +346,6 @@
     - /opt/cni
     - /etc/dhcp/dhclient.d/zdnsupdate.sh
     - /etc/dhcp/dhclient-exit-hooks.d/zdnsupdate
-    - /run/flannel
-    - /etc/flannel
     - /run/kubernetes
     - /usr/local/share/ca-certificates/etcd-ca.crt
     - /usr/local/share/ca-certificates/kube-ca.crt
@@ -380,7 +375,6 @@
     - /var/lib/cni
     - /etc/openvswitch
     - /run/openvswitch
-    - /var/lib/kube-router
     - /var/lib/calico
     - /etc/cilium
     - /run/calico
@@ -391,8 +385,6 @@
     - /etc/modules-load.d/kubespray-br_netfilter.conf
     - /etc/modules-load.d/kubespray-kata-containers.conf
     - /usr/libexec/kubernetes
-    - /etc/origin/openvswitch
-    - /etc/origin/ovn
     - "{{ sysctl_file_path }}"
     - /etc/crictl.yaml
   ignore_errors: true  # noqa ignore-errors
@@ -437,7 +429,7 @@
     name: "network_plugin/{{ kube_network_plugin }}"
     tasks_from: reset
   when:
-    - kube_network_plugin in ['flannel', 'cilium', 'kube-router', 'calico']
+    - kube_network_plugin in ['cilium', 'calico']
   tags:
     - network
 

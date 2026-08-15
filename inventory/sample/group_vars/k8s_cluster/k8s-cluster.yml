@@ -78,12 +78,8 @@ credentials_dir: "{{ inventory_dir }}/credentials"
 # kube_webhook_authorization_url: https://...
 # kube_webhook_authorization_url_skip_tls_verify: false
 
-# Choose network plugin (cilium, calico, kube-ovn or flannel. Use cni for generic cni plugin)
-# Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
-kube_network_plugin: calico
-
-# Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
-kube_network_plugin_multus: false
+# Choose network plugin (cilium or calico)
+kube_network_plugin: cilium
 
 # Kubernetes internal network for services, unused block of space.
 kube_service_addresses: 10.233.0.0/18

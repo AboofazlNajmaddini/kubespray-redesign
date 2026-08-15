@@ -1,0 +1,19 @@
+---
+- name: Download binaries and images to a local offline cache
+  hosts: k8s_cluster
+  gather_facts: true
+  environment: "{{ proxy_disable_env | default({}) }}"
+  pre_tasks:
+    - name: Ensure offline builder directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ bin_dir }}"
+        - "{{ kube_config_dir }}"
+        - "{{ download_cache_dir }}"
+        - "{{ local_release_dir }}"
+  roles:
+    - { role: kubespray_defaults }
+    - { role: download }

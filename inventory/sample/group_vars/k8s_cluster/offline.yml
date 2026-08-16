@@ -1,0 +1,435 @@
+---
+## Private registry (air-gap): all images are pulled from reg.priv.fabe.ir
+## instead of the upstream registries (registry.k8s.io / quay.io)
+kube_image_repo: "reg.priv.fabe.ir:5000/k8s"
+kubeadm_image_repo: "reg.priv.fabe.ir:5000/k8s"
+quay_image_repo: "reg.priv.fabe.ir:5001"
+
+## The :5001 repo is a pull-through proxy for quay.io and its upstream flaked on
+## cilium-envoy's manifest, so that one image is stored on the hosted :5000 repo.
+cilium_hubble_envoy_image_repo: "reg.priv.fabe.ir:5000/cilium/cilium-envoy"
+
+## Kubernetes version pinned to the locally available v1.35.1 set
+kube_version: "1.35.1"
+
+## CoreDNS pinned to the image available in the offline cache (minikube set)
+coredns_version: "1.13.1"
+
+## etcd runs as a host binary (downloaded from GitHub, reachable)
+etcd_deployment_type: host
+
+## NodeLocal DNS cache + DNS autoscaler are available in the offline cache
+## (pulled via m.daocloud.io mirror), keep them enabled
+enable_nodelocaldns: true
+enable_dns_autoscaler: true
+
+## Control-host offline cache lives inside the project (shared by both
+## playbooks/download.yml and cluster.yml when run from this machine).
+download_cache_dir: "/home/faraabeen/tempp/kubespray-2.31.0/offline/cache"
+
+## Offline build flags: pull/save images with docker on this builder,
+## reuse the pre-seeded cache for the registry.k8s.io images
+download_run_once: true
+download_localhost: true
+download_force_cache: true
+download_always_pull: true
+download_keep_remote_cache: true
+download_validate_certs: true
+
+## Non-root builder: make file-module owners target the current user so the
+## playbook never needs chown (cache building only; real deploys run as root).
+## NOTE: the download role expects the full "downloads" dict (no partial merge),
+## so every entry below is defined completely, mirroring the role defaults.
+download_defaults:
+  container: false
+  file: false
+  repo: None
+  tag: None
+  enabled: false
+  dest: None
+  url: None
+  unarchive: false
+  owner: "{{ ansible_user_id }}"
+  mode: None
+downloads:
+  etcd:
+    container: "{{ etcd_deployment_type != 'host' }}"
+    file: "{{ etcd_deployment_type == 'host' }}"
+    enabled: true
+    dest: "{{ local_release_dir }}/etcd-{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
+    repo: "{{ etcd_image_repo }}"
+    tag: "{{ etcd_image_tag }}"
+    checksum: >-
+      {{ etcd_binary_checksum if (etcd_deployment_type == 'host')
+      else etcd_digest_checksum | d(None) }}
+    url: "{{ etcd_download_url }}"
+    unarchive: "{{ etcd_deployment_type == 'host' }}"
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - etcd
+
+  cni:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
+    checksum: "{{ cni_binary_checksum }}"
+    url: "{{ cni_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  kubeadm:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/kubeadm-{{ kube_version }}-{{ image_arch }}"
+    checksum: "{{ kubeadm_binary_checksum }}"
+    url: "{{ kubeadm_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  kubelet:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/kubelet-{{ kube_version }}-{{ image_arch }}"
+    checksum: "{{ kubelet_binary_checksum }}"
+    url: "{{ kubelet_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  kubectl:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/kubectl-{{ kube_version }}-{{ image_arch }}"
+    checksum: "{{ kubectl_binary_checksum }}"
+    url: "{{ kubectl_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  crictl:
+    enabled: true
+    file: true
+    dest: "{{ local_release_dir }}/crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ crictl_binary_checksum }}"
+    url: "{{ crictl_download_url }}"
+    unarchive: true
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  crio:
+    enabled: "{{ container_manager == 'crio' }}"
+    file: true
+    dest: "{{ local_release_dir }}/cri-o.{{ image_arch }}.{{ crio_version }}.tar.gz"
+    checksum: "{{ crio_archive_checksum }}"
+    url: "{{ crio_download_url }}"
+    unarchive: true
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  cri_dockerd:
+    enabled: "{{ container_manager == 'docker' }}"
+    file: true
+    dest: "{{ local_release_dir }}/cri-dockerd-{{ cri_dockerd_version }}.{{ image_arch }}.tar.gz"
+    checksum: "{{ cri_dockerd_archive_checksum }}"
+    url: "{{ cri_dockerd_download_url }}"
+    unarchive: true
+    unarchive_extra_opts:
+      - --strip=1
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  crun:
+    enabled: "{{ crun_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/crun-{{ crun_version }}-{{ image_arch }}"
+    checksum: "{{ crun_binary_checksum }}"
+    url: "{{ crun_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  youki:
+    enabled: "{{ youki_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/youki-{{ youki_version }}-{{ ansible_architecture }}.tar.gz"
+    checksum: "{{ youki_archive_checksum }}"
+    url: "{{ youki_download_url }}"
+    unarchive: true
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  runc:
+    enabled: "{{ container_manager == 'containerd' }}"
+    file: true
+    dest: "{{ local_release_dir }}/runc-{{ runc_version }}.{{ image_arch }}"
+    checksum: "{{ runc_binary_checksum }}"
+    url: "{{ runc_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  kata_containers:
+    enabled: "{{ kata_containers_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.xz"
+    checksum: "{{ kata_containers_binary_checksum }}"
+    url: "{{ kata_containers_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  containerd:
+    enabled: "{{ container_manager == 'containerd' }}"
+    file: true
+    dest: "{{ local_release_dir }}/containerd-{{ 'static-' if containerd_static_binary }}{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ containerd_checksum }}"
+    url: "{{ containerd_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  gvisor_runsc:
+    enabled: "{{ gvisor_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/gvisor-runsc-{{ gvisor_version }}-{{ ansible_architecture }}"
+    checksum: "{{ gvisor_runsc_binary_checksum }}"
+    url: "{{ gvisor_runsc_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: 755
+    groups:
+      - k8s_cluster
+
+  gvisor_containerd_shim:
+    enabled: "{{ gvisor_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/gvisor-containerd-shim-runsc-v1-{{ gvisor_version }}-{{ ansible_architecture }}"
+    checksum: "{{ gvisor_containerd_shim_binary_checksum }}"
+    url: "{{ gvisor_containerd_shim_runsc_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: 755
+    groups:
+      - k8s_cluster
+
+  nerdctl:
+    enabled: "{{ container_manager == 'containerd' }}"
+    file: true
+    dest: "{{ local_release_dir }}/nerdctl-{{ nerdctl_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ nerdctl_archive_checksum }}"
+    url: "{{ nerdctl_download_url }}"
+    unarchive: true
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  skopeo:
+    enabled: "{{ container_manager == 'crio' }}"
+    file: true
+    dest: "{{ local_release_dir }}/skopeo-{{ skopeo_version }}-{{ image_arch }}"
+    checksum: "{{ skopeo_binary_checksum }}"
+    url: "{{ skopeo_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  ciliumcli:
+    enabled: "{{ kube_network_plugin == 'cilium' or cilium_deploy_additionally }}"
+    file: true
+    dest: "{{ local_release_dir }}/cilium-{{ cilium_cli_version }}-{{ image_arch }}.tar.gz"
+    checksum: "{{ ciliumcli_binary_checksum }}"
+    url: "{{ ciliumcli_download_url }}"
+    unarchive: true
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  cilium:
+    enabled: "{{ kube_network_plugin == 'cilium' or cilium_deploy_additionally }}"
+    container: true
+    repo: "{{ cilium_image_repo }}"
+    tag: "{{ cilium_image_tag }}"
+    checksum: "{{ cilium_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_operator:
+    enabled: "{{ kube_network_plugin == 'cilium' or cilium_deploy_additionally }}"
+    container: true
+    repo: "{{ cilium_operator_image_repo }}"
+    tag: "{{ cilium_operator_image_tag }}"
+    checksum: "{{ cilium_operator_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_relay:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_relay_image_repo }}"
+    tag: "{{ cilium_hubble_relay_image_tag }}"
+    checksum: "{{ cilium_hubble_relay_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_certgen:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_certgen_image_repo }}"
+    tag: "{{ cilium_hubble_certgen_image_tag }}"
+    checksum: "{{ cilium_hubble_certgen_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_ui:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_ui_image_repo }}"
+    tag: "{{ cilium_hubble_ui_image_tag }}"
+    checksum: "{{ cilium_hubble_ui_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_ui_backend:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_ui_backend_image_repo }}"
+    tag: "{{ cilium_hubble_ui_backend_image_tag }}"
+    checksum: "{{ cilium_hubble_ui_backend_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  cilium_hubble_envoy:
+    enabled: "{{ cilium_enable_hubble }}"
+    container: true
+    repo: "{{ cilium_hubble_envoy_image_repo }}"
+    tag: "{{ cilium_hubble_envoy_image_tag }}"
+    checksum: "{{ cilium_hubble_envoy_digest_checksum | default(None) }}"
+    groups:
+      - k8s_cluster
+
+  calicoctl:
+    enabled: "{{ kube_network_plugin == 'calico' }}"
+    file: true
+    dest: "{{ local_release_dir }}/calicoctl-{{ calico_ctl_version }}-{{ image_arch }}"
+    checksum: "{{ calicoctl_binary_checksum }}"
+    url: "{{ calicoctl_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - k8s_cluster
+
+  calico_crds:
+    enabled: "{{ kube_network_plugin == 'calico' and calico_datastore == 'kdd' }}"
+    file: true
+    dest: "{{ local_release_dir }}/calico-{{ calico_version }}-kdd-crds/crds.yaml"
+    checksum: "{{ calico_crds_checksums.no_arch[calico_version] }}"
+    url: "{{ calico_crds_download_url }}"
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  helm:
+    enabled: "{{ helm_enabled }}"
+    file: true
+    dest: "{{ local_release_dir }}/helm-{{ helm_version }}/helm-{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
+    checksum: "{{ helm_archive_checksum }}"
+    url: "{{ helm_download_url }}"
+    unarchive: true
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  gateway_api_crds:
+    enabled: "{{ gateway_api_enabled }}"
+    file: true
+    version: "{{ gateway_api_version }}"
+    dest: "{{ local_release_dir }}/gateway-api-{{ gateway_api_channel }}-install.yaml"
+    checksum: "{{ lookup('vars', 'gateway_api_' + gateway_api_channel + '_crds_checksums').no_arch[gateway_api_version] }}"
+    url: "{{ gateway_api_crds_download_url }}"
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  prometheus_operator_crds:
+    enabled: "{{ prometheus_operator_crds_enabled }}"
+    file: true
+    version: "{{ prometheus_operator_crds_version }}"
+    dest: "{{ local_release_dir }}/prometheus-operator-crds.yaml"
+    checksum: "{{ prometheus_operator_crds_checksums.no_arch[prometheus_operator_crds_version] }}"
+    url: "{{ prometheus_operator_crds_download_url }}"
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  yq:
+    enabled: "{{ argocd_enabled }}"
+    file: true
+    version: "{{ yq_version }}"
+    dest: "{{ local_release_dir }}/yq-{{ yq_version }}-{{ image_arch }}"
+    checksum: "{{ yq_binary_checksum }}"
+    url: "{{ yq_download_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+    groups:
+      - kube_control_plane
+
+  argocd_install:
+    enabled: "{{ argocd_enabled }}"
+    file: true
+    version: "{{ argocd_version }}"
+    dest: "{{ local_release_dir }}/argocd-install.yml"
+    checksum: "{{ argocd_install_checksum }}"
+    url: "{{ argocd_install_url }}"
+    unarchive: false
+    owner: "{{ ansible_user_id }}"
+    mode: "0644"
+    groups:
+      - kube_control_plane
+
+## Network plugin
+kube_network_plugin: cilium
+
+## This builder host has docker (no nerdctl in bin_dir, root-only containerd socket).
+## Use docker for pulling/saving container images locally; site nodes still deploy containerd.
+container_manager_on_localhost: docker
+image_command_tool_on_localhost: docker
+
+## Container manager for the built cluster
+container_manager: containerd

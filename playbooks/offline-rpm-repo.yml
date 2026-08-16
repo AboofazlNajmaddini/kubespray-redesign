@@ -1,0 +1,65 @@
+---
+# Prepare fully-offline RHEL nodes to install kubespray's package dependencies.
+# Copies the RPM bundle built by playbooks/offline-download.yml onto each node
+# and registers it as a local yum repo, so cluster.yml's dnf installs work
+# without any internet / Red Hat repo access.
+#
+# Usage (before cluster.yml):
+#   ansible-playbook -i inventory/<cluster>/hosts.yml playbooks/offline-rpm-repo.yml
+- name: Provision the offline yum repo on RHEL cluster nodes
+  hosts: k8s_cluster
+  gather_facts: true
+  become: true
+  vars:
+    offline_rpm_src: "{{ playbook_dir | dirname }}/offline/rpm"
+    node_rpm_dir: "/opt/kubespray-offline-rpm"
+    node_repo_backup_dir: "/etc/yum.repos.d/kubespray-backup"
+  tasks:
+    - name: Ensure the RPM bundle exists on the control host
+      stat:
+        path: "{{ offline_rpm_src }}/repodata/repomd.xml"
+      delegate_to: localhost
+      connection: local
+      run_once: true
+      register: rpm_bundle_repodata
+      failed_when: not rpm_bundle_repodata.stat.exists
+      vars:
+        ansible_become: false
+
+    - name: Create the offline RPM directory on the node
+      file:
+        path: "{{ node_rpm_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy the RPM bundle onto the node
+      copy:
+        src: "{{ offline_rpm_src }}/"
+        dest: "{{ node_rpm_dir }}"
+        mode: "0644"
+        directory_mode: "0755"
+
+    - name: Disable the system repositories (fully-offline nodes)
+      shell: >-
+        mkdir -p {{ node_repo_backup_dir }}
+        && find /etc/yum.repos.d -maxdepth 1 -name '*.repo' -not -name 'kubespray-offline.repo'
+           -exec mv -t {{ node_repo_backup_dir }} {} +
+      changed_when: false
+      when: offline_disable_system_repos | default(true)
+
+    - name: Register the offline repository
+      copy:
+        dest: /etc/yum.repos.d/kubespray-offline.repo
+        mode: "0644"
+        content: |
+          [kubespray-offline]
+          name=Kubespray offline RHEL 8 repository
+          baseurl=file://{{ node_rpm_dir }}
+          enabled=1
+          gpgcheck=0
+
+    - name: Refresh dnf metadata and verify the offline repo resolves
+      command: dnf makecache --quiet
+      register: dnf_makecache
+      failed_when: "'kubespray-offline' not in dnf_makecache.stdout"
+      changed_when: false

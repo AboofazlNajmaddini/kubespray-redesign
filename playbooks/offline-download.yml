@@ -1,0 +1,57 @@
+---
+# Build the full offline bundle inside the project directory:
+#   offline/bin       -> builder tools (bin_dir)
+#   offline/config    -> builder kubeconfig (kube_config_dir)
+#   offline/cache     -> control-host file + image cache (download_cache_dir)
+#   offline/releases  -> extracted binaries (local_release_dir)
+#   offline/rpm       -> RHEL 8 package closure (for fully-offline dnf installs)
+#
+# Usage:
+#   ansible-playbook -i inventory/offline-builder/hosts.yml playbooks/offline-download.yml
+- name: Build the offline bundle (binaries + images + RHEL RPMs)
+  hosts: k8s_cluster
+  gather_facts: true
+  environment: "{{ proxy_disable_env | default({}) }}"
+  pre_tasks:
+    - name: Ensure offline directory structure exists
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ bin_dir }}"
+        - "{{ kube_config_dir }}"
+        - "{{ download_cache_dir }}"
+        - "{{ local_release_dir }}"
+        - "{{ local_release_dir }}/images"
+        - "{{ download_cache_dir }}/images"
+        - "{{ download_cache_dir | dirname }}/rpm"
+  roles:
+    - { role: kubespray_defaults }
+    - { role: download }
+  post_tasks:
+    - name: Stage RHEL 8 packages for the fully-offline cluster nodes
+      block:
+        - name: Stat existing repo metadata
+          stat:
+            path: "{{ download_cache_dir | dirname }}/rpm/repodata/repomd.xml"
+          register: rhel_repodata
+
+        - name: Download RHEL 8 package closure and build the yum repo
+          command: >-
+            docker run --rm
+            -v {{ download_cache_dir | dirname }}/rpm:/rpm
+            {{ offline_rpm_base_image | default('quay.io/rockylinux/rockylinux:8') }}
+            bash -c "
+            dnf -y install dnf-plugins-core createrepo_c &&
+            dnf -y download --resolve --destdir=/rpm
+            conntrack container-selinux device-mapper-libs iproute iptables ipset iputils ipvsadm libseccomp nftables nss python3-libselinux rsync socat tar unzip curl openssl ebtables xfsprogs bash-completion chrony &&
+            createrepo_c /rpm"
+          register: rhel_rpm_result
+          changed_when: false
+          failed_when: rhel_rpm_result.rc != 0
+          when:
+            - not rhel_repodata.stat.exists or offline_refetch_rpms | default(false)
+      when:
+        - ansible_system == 'Linux'
+        - not ansible_virtualization_type is search('container')

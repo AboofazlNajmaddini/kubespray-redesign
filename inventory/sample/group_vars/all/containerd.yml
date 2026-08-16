@@ -53,6 +53,20 @@
 #       header:
 #         Authorization: "Basic XXX"
 
+# Air-gap: force containerd to reach the private registry over plain HTTP
+# (Nexus on reg.priv.fabe.ir). Anonymous pull is allowed on both ports.
+containerd_registries_mirrors:
+  - prefix: reg.priv.fabe.ir:5000
+    mirrors:
+      - host: http://reg.priv.fabe.ir:5000
+        capabilities: ["pull", "resolve"]
+        skip_verify: true
+  - prefix: reg.priv.fabe.ir:5001
+    mirrors:
+      - host: http://reg.priv.fabe.ir:5001
+        capabilities: ["pull", "resolve"]
+        skip_verify: true
+
 # containerd_max_container_log_line_size: 16384
 
 # containerd_registry_auth:

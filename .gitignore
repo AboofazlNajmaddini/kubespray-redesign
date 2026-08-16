@@ -1,0 +1,8 @@
+# Offline bundle (binaries, image tars, RHEL RPMs) — generated, not tracked
+/offline/
+
+# Python / tooling
+*.pyc
+__pycache__/
+.venv/
+venv/

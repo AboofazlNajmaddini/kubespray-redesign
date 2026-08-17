@@ -9,6 +9,11 @@ quay_image_repo: "reg.priv.fabe.ir:5001"
 ## cilium-envoy's manifest, so that one image is stored on the hosted :5000 repo.
 cilium_hubble_envoy_image_repo: "reg.priv.fabe.ir:5000/cilium/cilium-envoy"
 
+## Nginx/haproxy loadbalancer images must also be remapped to the private
+## registry, otherwise the local LB proxy will fail to pull its image.
+nginx_image_repo: "reg.priv.fabe.ir:5000/library/nginx"
+haproxy_image_repo: "reg.priv.fabe.ir:5000/library/haproxy"
+
 ## Kubernetes version pinned to the locally available v1.35.1 set
 kube_version: "1.35.1"
 
@@ -26,13 +31,14 @@ enable_dns_autoscaler: true
 ## Control-host offline cache lives inside the project (shared by both
 ## playbooks/download.yml and cluster.yml when run from this machine).
 download_cache_dir: "/home/faraabeen/tempp/kubespray-2.31.0/offline/cache"
+local_release_dir: "/home/faraabeen/tempp/kubespray-2.31.0/offline/releases"
 
 ## Offline build flags: pull/save images with docker on this builder,
 ## reuse the pre-seeded cache for the registry.k8s.io images
 download_run_once: true
 download_localhost: true
 download_force_cache: true
-download_always_pull: true
+download_always_pull: false
 download_keep_remote_cache: true
 download_validate_certs: true
 

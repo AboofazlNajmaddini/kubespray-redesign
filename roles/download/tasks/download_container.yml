@@ -49,7 +49,10 @@
     - name: Stop if image not in cache on ansible host when download_force_cache=true
       assert:
         that: image_is_cached
-        msg: "Image cache file {{ image_path_cached }} not found for {{ image_reponame }} on localhost"
+        msg: >-
+          OFFLINE FAILURE: image {{ image_reponame }} not found in
+          {{ image_path_cached }}.  Run offline-bundle.yml to populate the
+          cache before deploying with cluster.yml.
       when:
         - download_force_cache
         - not download_run_once
@@ -106,15 +109,15 @@
       retries: "{{ download_retries }}"
       delay: "{{ retry_stagger | random + 3 }}"
       when:
-        - pull_required
         - download_force_cache
+        - pull_required or image_is_cached
 
     - name: Download_container | Load image into the local container registry
       shell: "{{ image_load_command }}"  # noqa command-instead-of-shell - image_load_command uses pipes, therefore requires shell
       register: container_load_status
       failed_when: container_load_status is failed
       when:
-        - pull_required
+        - pull_required or image_is_cached
         - download_force_cache
         - not download_skip_local_load | default(false)
 

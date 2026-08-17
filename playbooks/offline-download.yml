@@ -6,6 +6,9 @@
 #   offline/releases  -> extracted binaries (local_release_dir)
 #   offline/rpm       -> RHEL 8 package closure (for fully-offline dnf installs)
 #
+# After the download + RPM tasks complete, the playbook packs everything
+# into a single tar.gz so the air-gapped target only needs one file.
+#
 # Usage:
 #   ansible-playbook -i inventory/offline-builder/hosts.yml playbooks/offline-download.yml
 - name: Build the offline bundle (binaries + images + RHEL RPMs)
@@ -55,3 +58,25 @@
       when:
         - ansible_system == 'Linux'
         - not ansible_virtualization_type is search('container')
+
+    # ── Pack the offline bundle into a single tar.gz ────────────────────
+    # The archive contains cache/ (file cache + images) and releases/
+    # (extracted binaries).  Copy this one file to the air-gapped target,
+    # extract it in the project root, then run cluster.yml.
+    - name: Pack offline bundle into tar.gz
+      shell: >-
+        tar -czf {{ offline_bundle_path | default(download_cache_dir | dirname + '/kubespray-offline-bundle.tar.gz') }}
+        -C {{ download_cache_dir | dirname }}
+        cache releases rpm
+      args:
+        creates: "{{ offline_bundle_path | default(download_cache_dir | dirname + '/kubespray-offline-bundle.tar.gz') }}"
+      register: tar_result
+      become: false
+
+    - name: Offline bundle packed
+      debug:
+        msg: >-
+          Offline bundle created at
+          {{ offline_bundle_path | default(download_cache_dir | dirname + '/kubespray-offline-bundle.tar.gz') }}.
+          Copy this file to the air-gapped target, extract it in the project
+          root, then run: ansible-playbook -i <inventory> playbooks/cluster.yml

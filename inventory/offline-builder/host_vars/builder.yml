@@ -4,9 +4,9 @@
 main_access_ip: 192.168.30.111
 ## Offline bundle is built inside the project with a standard layout.
 ## download_cache_dir is shared via group_vars (also used by cluster.yml).
-bin_dir: "/home/faraabeen/tempp/kubespray-2.31.0/offline/bin"
-kube_config_dir: "/home/faraabeen/tempp/kubespray-2.31.0/offline/config"
-local_release_dir: "/home/faraabeen/tempp/kubespray-2.31.0/offline/releases"
+bin_dir: "{{ inventory_dir }}/../../offline/bin"
+kube_config_dir: "{{ inventory_dir }}/../../offline/config"
+local_release_dir: "{{ inventory_dir }}/../../offline/releases"
 ## During the offline cache build on this docker-based builder, skip loading
 ## images into the local container runtime (socket is root-only). Nodes will
 ## pull from the private registry via containerd mirrors at deploy time.

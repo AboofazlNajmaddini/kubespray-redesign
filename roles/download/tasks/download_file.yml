@@ -54,8 +54,29 @@
     - download_force_cache
     - not download_localhost
 
+  # ── Offline: skip get_url when file is already in the local cache ────
+  # When download_force_cache is true (builder or offline deploy) and the
+  # cached copy already exists, there is no need to contact the remote URL.
+  # This lets cluster.yml run with zero internet access.
+  - name: Download_file | Check if file already in local cache
+    stat:
+      path: "{{ file_path_cached }}"
+      get_attributes: false
+      get_checksum: false
+      get_mime: false
+    delegate_to: localhost
+    connection: local
+    delegate_facts: false
+    register: cached_file_stat
+    become: false
+    when:
+    - download_force_cache
+    tags:
+    - localhost
+
   # This must always be called, to check if the checksum matches. On no-match the file is re-downloaded.
   # This task will avoid logging it's parameters to not leak environment passwords in the log
+  # When the file is already in cache (offline deploy), skip this entirely.
   - name: Download_file | Download item
     get_url:
       url: "{{ download.url }}"
@@ -79,6 +100,34 @@
     delay: "{{ retry_stagger | default(5) }}"
     environment: "{{ proxy_env }}"
     no_log: "{{ not (unsafe_show_logs | bool) }}"
+    when:
+    - not (download_force_cache | bool and cached_file_stat.stat.exists | default(false) | bool)
+
+  - name: Download_file | Verify file exists in cache after download attempt
+    stat:
+      path: "{{ file_path_cached }}"
+      get_attributes: false
+      get_checksum: false
+      get_mime: false
+    delegate_to: localhost
+    connection: local
+    delegate_facts: false
+    register: final_cache_check
+    become: false
+    when:
+    - download_force_cache
+
+  - name: Download_file | Abort if file is missing from local cache
+    assert:
+      that:
+        - final_cache_check.stat.exists
+      msg: >-
+        OFFLINE FAILURE: {{ download.dest | basename }} not found in
+        {{ file_path_cached }}.  Run offline-bundle.yml to populate the
+        cache before deploying with cluster.yml.
+    when:
+    - download_force_cache
+    - final_cache_check is defined
 
   - name: Download_file | Copy file back to ansible host file cache
     ansible.posix.synchronize:

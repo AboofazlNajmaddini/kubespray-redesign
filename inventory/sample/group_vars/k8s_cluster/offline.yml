@@ -20,8 +20,8 @@ kube_version: "1.35.1"
 ## CoreDNS pinned to the image available in the offline cache (minikube set)
 coredns_version: "1.13.1"
 
-## etcd runs as a host binary (downloaded from GitHub, reachable)
-etcd_deployment_type: host
+## etcd runs as a host binary
+## (value already set in all/etcd.yml, kept here as documentation only)
 
 ## NodeLocal DNS cache + DNS autoscaler are available in the offline cache
 ## (pulled via m.daocloud.io mirror), keep them enabled
@@ -29,9 +29,9 @@ enable_nodelocaldns: true
 enable_dns_autoscaler: true
 
 ## Control-host offline cache lives inside the project (shared by both
-## playbooks/download.yml and cluster.yml when run from this machine).
-download_cache_dir: "/home/faraabeen/tempp/kubespray-2.31.0/offline/cache"
-local_release_dir: "/home/faraabeen/tempp/kubespray-2.31.0/offline/releases"
+## offline-bundle.yml and cluster.yml when run from this machine).
+download_cache_dir: "{{ inventory_dir }}/../../offline/cache"
+local_release_dir: "{{ inventory_dir }}/../../offline/releases"
 
 ## Offline build flags: pull/save images with docker on this builder,
 ## reuse the pre-seeded cache for the registry.k8s.io images
@@ -429,13 +429,10 @@ downloads:
     groups:
       - kube_control_plane
 
-## Network plugin
-kube_network_plugin: cilium
-
 ## This builder host has docker (no nerdctl in bin_dir, root-only containerd socket).
 ## Use docker for pulling/saving container images locally; site nodes still deploy containerd.
 container_manager_on_localhost: docker
 image_command_tool_on_localhost: docker
 
-## Container manager for the built cluster
-container_manager: containerd
+## kube_network_plugin and container_manager are already defined in
+## k8s-cluster.yml (cilium / containerd).  No need to repeat them here.

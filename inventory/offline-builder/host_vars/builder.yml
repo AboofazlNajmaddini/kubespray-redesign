@@ -2,12 +2,7 @@
 ## The download playbook does not run network_facts (only cluster.yml does).
 ## main_access_ip is needed to render the kubeadm config during prep_kubeadm_images.
 main_access_ip: 192.168.30.111
-## Offline bundle is built inside the project with a standard layout.
-## download_cache_dir is shared via group_vars (also used by cluster.yml).
+## Offline bundle paths (relative to project root).
 bin_dir: "{{ inventory_dir }}/../../offline/bin"
 kube_config_dir: "{{ inventory_dir }}/../../offline/config"
 local_release_dir: "{{ inventory_dir }}/../../offline/releases"
-## During the offline cache build on this docker-based builder, skip loading
-## images into the local container runtime (socket is root-only). Nodes will
-## pull from the private registry via containerd mirrors at deploy time.
-download_skip_local_load: true

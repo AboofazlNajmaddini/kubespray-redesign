@@ -19,6 +19,9 @@ enable_dns_autoscaler: true
 download_cache_dir: "{{ inventory_dir }}/../../offline/cache"
 local_release_dir: "{{ inventory_dir }}/../../offline/releases"
 
+## ── Binary download URLs (private proxy) ─────────────────────────────
+ciliumcli_download_url: "https://reg.priv.fabe.ir:5001/cilium/cilium-linux-{{ image_arch }}.tar.gz"
+
 ## ── Download flags (used by both the builder and the deploy) ──────────
 download_run_once: true
 download_localhost: true

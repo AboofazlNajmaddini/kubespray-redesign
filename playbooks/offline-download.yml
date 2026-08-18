@@ -60,14 +60,14 @@
         - not ansible_virtualization_type is search('container')
 
     # ── Pack the offline bundle into a single tar.gz ────────────────────
-    # The archive contains cache/ (file cache + images) and releases/
-    # (extracted binaries).  Copy this one file to the air-gapped target,
-    # extract it in the project root, then run cluster.yml.
+    # The archive contains cache/ (file cache + images), releases/
+    # (extracted binaries), rpm/ (RHEL packages), and charts/ (Helm charts
+    # for air-gapped installs like Cilium).
     - name: Pack offline bundle into tar.gz
       shell: >-
         tar -czf {{ offline_bundle_path | default(download_cache_dir | dirname + '/kubespray-offline-bundle.tar.gz') }}
         -C {{ download_cache_dir | dirname }}
-        cache releases rpm
+        cache releases rpm charts
       args:
         creates: "{{ offline_bundle_path | default(download_cache_dir | dirname + '/kubespray-offline-bundle.tar.gz') }}"
       register: tar_result

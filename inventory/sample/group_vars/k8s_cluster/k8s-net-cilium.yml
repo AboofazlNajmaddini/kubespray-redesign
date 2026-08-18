@@ -1,4 +1,7 @@
 ---
+## ── Offline: use local Helm chart instead of downloading from internet ─
+cilium_install_extra_flags: "--chart-path {{ inventory_dir }}/../../offline/charts/cilium-{{ cilium_version }}.tgz"
+
 # Log-level
 # cilium_debug: false
 
